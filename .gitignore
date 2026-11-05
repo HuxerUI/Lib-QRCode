@@ -1,0 +1,10 @@
+/build*/
+/.cache/
+/traces/
+/.vs/
+/.idea/
+*.user
+*.swp
+/.DS_Store
+# Unused upstream libzint symlinks; only the built-in writer backend is distributed.
+/third_party/zxing/core/src/libzint/
