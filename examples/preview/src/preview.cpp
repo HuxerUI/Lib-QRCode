@@ -54,7 +54,7 @@ View PreviewApp() {
   auto exporting = UseState(false);
   auto picker = UseService<FilePicker>();
   auto tasks = UseTaskScope();
-  const File export_file(UseApplication().Directories().temporary_directory, "huxerui-code.svg");
+  const auto application = UseApplication();
   const auto generate = [=] {
     try {
       generated = Encode(input.Get().text, {
@@ -133,6 +133,7 @@ View PreviewApp() {
               const auto svg = generated.Get().ToSvg({.scale = 8});
               tasks.Launch([=]() -> Task<void> {
                 try {
+                  const File export_file(application.Directories().temporary_directory, "huxerui-code.svg");
                   if(!co_await export_file.WriteStringAsync(svg)) {
                     status = "Could not prepare the SVG export.";
                     failed = true;
