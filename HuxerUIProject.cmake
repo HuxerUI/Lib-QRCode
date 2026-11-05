@@ -8,7 +8,7 @@ if(HUXERUI_PROJECT_PLAN_OUTPUT)
   "name": "Lib-QRCode",
   "id": "org.huxerui.lib.qrcode",
   "target": "huxerui_qrcode",
-  "namespace": "huxerui",
+  "namespace": "huxerui::qrcode",
   "publicTarget": "HuxerUI::QRCode"
 }
 ]=])

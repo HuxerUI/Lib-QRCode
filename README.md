@@ -33,21 +33,19 @@ using namespace huxerui::qrcode;
 View Ticket() {
   return Column {
     QRCode("https://github.com/HuxerUI", {
-      .qr_error_correction = ErrorCorrection::High,
-    }),
-    Barcode("HUXERUI-2026", {.format = BarcodeFormat::Code128}, {
-      .size = {480, 120},
-      .label = "Inventory barcode",
-    }),
+      .error_correction = ErrorCorrection::High,
+    }).With(Frame{.width = 240.0F, .height = 240.0F}),
+    Barcode("HUXERUI-2026", {.format = BarcodeFormat::Code128})
+        .With(Frame{.width = 480.0F, .height = 120.0F}, Semantics{.label = "Inventory barcode"}),
   }.With(Spacing(16.0F));
 }
 ```
 
-`QRCode` requires the QR Code format; `Barcode` accepts every writable format. `QRCode` defaults to a 240 × 240 DIP frame; the text overload of `Barcode` defaults to Code 128 and 320 × 120 DIPs. A `BarcodeStyle` argument replaces those defaults, so set its size explicitly when needed. Standard view modifiers can constrain the frame further.
+`QRCode(text, QRCodeOptions)` always encodes QR Code; the text overload of `Barcode` takes explicit `EncodeOptions` and uses their format unchanged. Both also accept prepared `Symbol` values; `QRCode(symbol)` validates that the format is QR Code. All view overloads use the same `BarcodeStyle{}` defaults and impose no intrinsic frame. Supply bounded layout through a parent or `.With(Frame{...})`.
 
 White backgrounds and black modules are intentional in both light and dark themes. Custom colors are supported but callers must preserve enough contrast. Keep quiet zones unobstructed and provide at least one device pixel per module; very small bounds, fractional display scaling, clipping, or later transforms can reduce scan reliability. This component does not draw logos over symbols or round their modules.
 
-Payloads are not automatically exposed as accessible text. Supply a meaningful `BarcodeStyle::label` and only disclose a payload explicitly when appropriate for your app.
+Payloads are not automatically exposed as accessible text. The default image label is the symbol's format name. Override it with `.With(Semantics{.label = "Ticket code"})`; the SDK accepts literal text, `StringVariant`, and generated localized string resources. `BarcodeStyle` controls only foreground/background colors.
 
 ## Prepare once, reuse and export
 
@@ -67,9 +65,9 @@ auto svg = symbol.ToSvg({.scale = 8});
 std::ofstream("code.svg", std::ios::binary) << svg;
 ```
 
-On the UI thread, `Barcode(symbol, {.size = {280, 280}, .label = "Ticket code"})` renders a prepared symbol. Copies share immutable module storage, so a worker can encode once and pass the result to application-owned state. Text view overloads encode immediately on every call; they do not maintain a global cache.
+On the UI thread, `QRCode(symbol).With(Frame{.width = 280.0F, .height = 280.0F}, Semantics{.label = "Ticket code"})` renders a prepared QR symbol; `Barcode(symbol)` accepts any writable symbol. Copies share immutable module storage and compare equal by allocation identity. Separate `Encode` calls produce distinct identities even for equal payloads. A worker can encode once and pass the result to application-owned state. Text view overloads encode immediately on every call; they do not maintain a global cache.
 
-`Width()`, `Height()`, `Modules()`, and `IsDark(x, y)` include the quiet zone. `Modules()` is a row-major byte span containing 0/1 values. `Rasterize` preserves exact module boundaries using positive integer scaling. SVG contains only geometric paths and opaque RGB colors; the payload is not embedded as text or metadata. Both exports default to black on white.
+`Width()`, `Height()`, `Modules()`, and `IsDark(x, y)` include the quiet zone. `Modules()` is a row-major byte span containing 0/1 values and stays valid while a `Symbol` retains its allocation. `GrayImage::View()` borrows the image's pixel storage. `Rasterize` preserves exact module boundaries using positive integer scaling. SVG contains only geometric paths and opaque RGB colors; the payload is not embedded as text or metadata. Both exports default to black on white.
 
 ## Decode pixels or camera frames
 
@@ -97,9 +95,10 @@ Pixels must be top-down with positive dimensions and a nonnegative row stride; z
 - `Encode` accepts 1..8192 valid UTF-8 bytes, including embedded NULs. Each format's actual capacity/alphabet can be smaller. This is a text encoder; binary decode results remain available through `bytes`.
 - `EncodeOptions::quiet_zone` accepts -1..256 modules. -1 means 4 for QR, 10 for linear formats, and 2 for other matrix formats, on every side. Explicit zero is permitted for controlled composition; add suitable external margins before scanning.
 - Linear `bar_height` accepts 1..1024 modules and defaults to 64. QR correction defaults to Medium; the QR-specific option has no effect on other formats.
+- `QRCodeOptions` contains only `error_correction` and `quiet_zone`. `BarcodeStyle`, `QRCodeOptions`, `EncodeOptions`, `DecodeOptions`, and `SvgOptions` support value equality for application-owned configuration.
 - EAN/UPC digits and checksums are validated by the backend. Payloads omitting a check digit may have it added by the backend; decoding returns the full canonical value. Codabar includes start/stop letters. Text restrictions and extended Code 39/93 interpretation follow ZXing.
 - Invalid options, UTF-8, layouts, unsupported encoding formats, or capacity overflow throw `std::invalid_argument`. Out-of-range `IsDark` coordinates throw `std::out_of_range`. Allocation and unexpected internal errors retain their exception categories.
-- Raster/scan dimensions are limited to 64 Mi pixels. Decoding also checks span length and signed backend row-offset limits. Native preferred view dimensions must be finite and in (0, 16384] DIPs.
+- Raster/scan dimensions are limited to 64 Mi pixels. Decoding also checks span length and signed backend row-offset limits. Native view bounds follow the SDK's layout validation; an empty drawing area produces no commands.
 - SVG supports opaque `0xRRGGBB` foreground/background overrides. Color customization does not guarantee contrast or scan quality.
 
 ## Build and test
@@ -115,7 +114,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Run `qrcode_preview` to select any writable format, edit its payload, choose QR correction, load valid samples, change themes, decode the generated preview, and export SVG through the system save dialog. Like the other Lib projects, the demo lives in [`examples/preview`](examples/preview/README.md) and can also be configured independently:
+Run `example_qrcode` to select any writable format, edit its payload, choose QR correction, load valid samples, change themes, decode the generated preview, and export SVG through the system save dialog. Like the other Lib projects, the demo lives in [`examples/preview`](examples/preview/README.md) and can also be configured independently:
 
 ```sh
 cmake -S examples/preview -B build-preview -DHUXERUI_HOME=/path/to/HuxerUI
@@ -132,6 +131,8 @@ ctest --test-dir build-core -C Release --output-on-failure
 ```
 
 Both modes expose `HuxerUI::QRCode`. The UI header requires the native build; standalone consumers include only `<huxerui/qrcode/codec.h>`. HuxerUI library-graph and project-plan discovery do not compile or configure ZXing. The pinned backend owns the `ZXing`/`ZXing::ZXing` targets; avoid combining another independently configured ZXing copy in the same CMake build. There is no standalone install/export package in this version; consume it through `add_subdirectory` or `huxerui_use_library`.
+
+The public API follows the [interface conventions](docs/interface-conventions.md) reviewed from FinalScave's libraries.
 
 ## License
 

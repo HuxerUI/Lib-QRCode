@@ -1,5 +1,4 @@
 #include <huxerui/qrcode.h>
-#include <huxerui/modifier.h>
 #include <huxerui/semantics.h>
 
 #include "paint_symbol.h"
@@ -13,9 +12,6 @@ namespace huxerui::qrcode {
 namespace {
 
 void ValidateStyle(const BarcodeStyle& style) {
-  if(!std::isfinite(style.size.width) || !std::isfinite(style.size.height) ||
-      style.size.width <= 0 || style.size.height <= 0 || style.size.width > 16384 || style.size.height > 16384)
-    throw std::invalid_argument("HuxerUI QRCode: view dimensions must be finite and in (0, 16384]");
   for(auto color : {style.foreground, style.background}) {
     for(float channel : {color.red, color.green, color.blue, color.alpha})
       if(!std::isfinite(channel) || channel < 0 || channel > 1)
@@ -48,11 +44,11 @@ void detail::PaintSymbol(PaintContext& paint, Size size, const Symbol& symbol, C
 
 View Barcode(Symbol symbol, BarcodeStyle style) {
   ValidateStyle(style);
+  const auto label = std::string(FormatName(symbol.Format()));
   return Canvas([symbol = std::move(symbol), foreground = style.foreground, background = style.background]
                 (PaintContext& paint, Size size) {
     detail::PaintSymbol(paint, size, symbol, foreground, background);
-  }).With(Frame{.width = style.size.width, .height = style.size.height},
-           Semantics{.role = SemanticRole::Image, .label = std::move(style.label)});
+  }).With(Semantics{.role = SemanticRole::Image, .label = label});
 }
 
 View Barcode(std::string_view text, EncodeOptions options, BarcodeStyle style) {
@@ -60,10 +56,14 @@ View Barcode(std::string_view text, EncodeOptions options, BarcodeStyle style) {
   return Barcode(Encode(text, options), std::move(style));
 }
 
-View QRCode(std::string_view text, EncodeOptions options, BarcodeStyle style) {
-  if(options.format != BarcodeFormat::QRCode)
-    throw std::invalid_argument("HuxerUI QRCode: QRCode requires the QRCode format; use Barcode for other formats");
-  return Barcode(text, options, std::move(style));
+View QRCode(Symbol symbol, BarcodeStyle style) {
+  if(symbol.Format() != BarcodeFormat::QRCode)
+    throw std::invalid_argument("HuxerUI QRCode: QRCode requires a prepared QR Code symbol");
+  return Barcode(std::move(symbol), style);
+}
+
+View QRCode(std::string_view text, QRCodeOptions options, BarcodeStyle style) {
+  return Barcode(text, {.qr_error_correction = options.error_correction, .quiet_zone = options.quiet_zone}, style);
 }
 
 } // namespace huxerui::qrcode

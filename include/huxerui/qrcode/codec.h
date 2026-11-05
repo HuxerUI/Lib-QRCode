@@ -12,24 +12,30 @@
 
 namespace huxerui::qrcode {
 
+/// Writable and readable symbologies. CanEncode distinguishes formats supported only by the reader.
 enum class BarcodeFormat {
   QRCode, Code128, Code39, Code93, EAN8, EAN13, UPCA, UPCE, ITF, Codabar,
   DataMatrix, Aztec, PDF417,
   MicroQRCode, RMQRCode, MaxiCode, DataBar, DataBarExpanded, DataBarLimited, DXFilmEdge,
 };
 
+/// Returns a human-readable English format name. Rejects invalid enum values.
 [[nodiscard]] std::string_view FormatName(BarcodeFormat format);
+/// Returns false for reader-only formats and invalid enum values.
 [[nodiscard]] bool CanEncode(BarcodeFormat format) noexcept;
 
 enum class ErrorCorrection { Low, Medium, Quartile, High };
 
 struct EncodeOptions {
+  /// Requested symbol format; QR Code by default.
   BarcodeFormat format = BarcodeFormat::QRCode;
+  /// QR-only correction request; ignored by other formats.
   ErrorCorrection qr_error_correction = ErrorCorrection::Medium;
   /// Modules on every side; -1 selects a format-specific default. Range: -1..256.
   int quiet_zone = -1;
   /// Height of linear bars in modules (1..1024); ignored for matrix formats.
   int bar_height = 64;
+  bool operator==(const EncodeOptions&) const = default;
 };
 
 enum class PixelFormat { Gray8, RGB8, BGR8, RGBA8, BGRA8 };
@@ -49,6 +55,7 @@ struct GrayImage {
   int width = 0;
   int height = 0;
   std::vector<std::uint8_t> pixels;
+  /// Borrows pixels; invalidated by destruction, reallocation, or replacement of this image's storage.
   [[nodiscard]] ImageView View() const noexcept { return {pixels, width, height}; }
 };
 
@@ -57,6 +64,7 @@ struct SvgOptions {
   /// Opaque RGB colors in 0xRRGGBB order.
   std::uint32_t foreground = 0x000000;
   std::uint32_t background = 0xFFFFFF;
+  bool operator==(const SvgOptions&) const = default;
 };
 
 /// Immutable, cheaply copied symbol. Modules include the quiet zone; 1 is dark and 0 is light.
@@ -65,12 +73,15 @@ public:
   [[nodiscard]] int Width() const noexcept;
   [[nodiscard]] int Height() const noexcept;
   [[nodiscard]] BarcodeFormat Format() const noexcept;
+  /// Borrows modules while at least one Symbol retains this allocation.
   [[nodiscard]] std::span<const std::uint8_t> Modules() const noexcept;
   /// Throws std::out_of_range for coordinates outside the symbol.
   [[nodiscard]] bool IsDark(int x, int y) const;
   /// Integer nearest-neighbor scaling. Scale must be positive; output is limited to 64 Mi pixels.
   [[nodiscard]] GrayImage Rasterize(int scale = 4) const;
   [[nodiscard]] std::string ToSvg(SvgOptions options = {}) const;
+  /// Compares shared allocation identity. Independent Encode calls produce distinct symbol identities.
+  bool operator==(const Symbol&) const = default;
 
 private:
   struct Data;
@@ -93,6 +104,7 @@ struct DecodeOptions {
   bool pure = false;
   /// Maximum returned symbols, 1..255.
   int max_symbols = 32;
+  bool operator==(const DecodeOptions&) const = default;
 };
 
 struct ImagePoint {

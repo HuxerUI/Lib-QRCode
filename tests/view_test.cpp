@@ -38,27 +38,71 @@ void CheckPaint(const Symbol& symbol, int width, int height) {
   CHECK(result->text == "HUXERUI-2026");
 }
 
+#ifdef QRCODE_HAS_UI_TESTING
+View snapshot_declaration;
+
+huxerui::testing::UiSnapshot RenderDeclaration(View declaration) {
+  snapshot_declaration = std::move(declaration);
+  Application app([] { return snapshot_declaration; }, {.show_debug_overlay = false});
+  huxerui::testing::UiTest ui(app);
+  return ui.CaptureSnapshot();
+}
+
+void CheckViewContracts() {
+  const Frame frame{.width = 240.0F, .height = 240.0F};
+  CHECK(RenderDeclaration(QRCode("default").With(frame)) ==
+        RenderDeclaration(QRCode(Encode("default")).With(frame)));
+  const BarcodeStyle style{.foreground = Color::Rgb(20, 40, 60), .background = Color::Rgb(245, 245, 255)};
+  const auto prepared = Encode("configured", {.qr_error_correction = ErrorCorrection::High, .quiet_zone = 8});
+  CHECK(RenderDeclaration(QRCode("configured", {.error_correction = ErrorCorrection::High, .quiet_zone = 8}, style)
+                              .With(frame)) == RenderDeclaration(Barcode(prepared, style).With(frame)));
+  CHECK(RenderDeclaration(Barcode("HUXERUI", {.format = BarcodeFormat::Code128}, style).With(frame)) ==
+        RenderDeclaration(Barcode(Encode("HUXERUI", {.format = BarcodeFormat::Code128}), style).With(frame)));
+}
+
+void CheckLayout() {
+  using namespace huxerui::testing;
+  Application app([]() -> View {
+    return Column {
+      Barcode(Encode("prepared"))
+          .With(Frame{.width = 160.0F, .height = 100.0F}).Key("prepared"),
+      Barcode("123456", {.format = BarcodeFormat::Code128})
+          .With(Frame{.width = 160.0F, .height = 100.0F}).Key("encoded"),
+      QRCode("qr").With(Frame{.width = 160.0F, .height = 100.0F}).Key("text-qr"),
+      QRCode(Encode("qr")).With(Frame{.width = 160.0F, .height = 100.0F}).Key("prepared-qr"),
+      Row { QRCode("parent bounds").With(Grow{}).Key("parent-bounds") }
+          .With(Frame{.width = 120.0F, .height = 80.0F}, CrossAlign(CrossAxisAlignment::Stretch)),
+    };
+  }, {.show_debug_overlay = false});
+  UiTest ui(app);
+  for(const char* key : {"prepared", "encoded", "text-qr", "prepared-qr"})
+    CHECK(ui.Find(UiSelector::Key(key)).One().size == (Size{160, 100}));
+  CHECK(ui.Find(UiSelector::Key("parent-bounds")).One().size == (Size{120, 80}));
+  CHECK(ui.FindSemantics(UiSemanticSelector::Label("Code 128")).Exists());
+  CHECK(ui.FindSemantics(UiSemanticSelector::Label("QR Code")).Exists());
+}
+#endif
+
 int main() { return Run([] {
   const auto symbol = Encode("HUXERUI-2026");
   CheckPaint(symbol, 241, 320);
   CheckPaint(symbol, 400, 201);
   CheckPaint(Encode("HUXERUI-2026", {.format = BarcodeFormat::Code128}), 640, 160);
   (void)QRCode("Hello");
-  (void)Barcode("123456");
+  (void)Barcode("123456", {.format = BarcodeFormat::Code128});
   (void)Barcode(symbol);
-  Throws<std::invalid_argument>([] { (void)QRCode("x", {.format = BarcodeFormat::Code128}); });
-  Throws<std::invalid_argument>([&] { (void)Barcode(symbol, {.size = {0, 100}}); });
-  Throws<std::invalid_argument>([&] { (void)Barcode(symbol, {.size = {100, -1}}); });
-  Throws<std::invalid_argument>([&] { (void)Barcode(symbol, {.size = {100, 16385}}); });
-  Throws<std::invalid_argument>([&] {
-    (void)Barcode(symbol, {.size = {std::numeric_limits<float>::quiet_NaN(), 100}});
-  });
+  (void)QRCode(symbol);
+  Throws<std::invalid_argument>([] { (void)QRCode(Encode("x", {.format = BarcodeFormat::Code128})); });
+  Throws<std::invalid_argument>([] { (void)QRCode("x", {.error_correction = static_cast<ErrorCorrection>(99)}); });
+  Throws<std::invalid_argument>([] { (void)QRCode("x", {.quiet_zone = -2}); });
   Throws<std::invalid_argument>([&] { (void)Barcode(symbol, {.foreground = {2, 0, 0, 1}}); });
   Throws<std::invalid_argument>([&] {
     (void)Barcode(symbol, {.background = {0, 0, 0, std::numeric_limits<float>::infinity()}});
   });
 
 #ifdef QRCODE_HAS_UI_TESTING
+  CheckViewContracts();
+  CheckLayout();
   using namespace huxerui::testing;
   Application app([]() -> View {
     auto changed = UseState(false);
@@ -68,8 +112,9 @@ int main() { return Run([] {
       Button("Toggle").OnClick([visible]() mutable { visible = !visible.Get(); }),
       Scope([=]() -> View {
         if(!visible.Get()) return View{};
-        return QRCode(changed.Get() ? "new content" : "old content", {},
-                       {.size = {180, 180}, .label = changed.Get() ? "Updated code" : "Original code"}).Key("qr");
+        return QRCode(changed.Get() ? "new content" : "old content")
+            .With(Frame{.width = changed.Get() ? 220.0F : 180.0F, .height = 180.0F},
+                  Semantics{.label = StringVariant(changed.Get() ? "Updated code" : "Original code")}).Key("qr");
       }),
     };
   }, {.window = {.initial_size = {640, 480}}, .show_debug_overlay = false});
@@ -79,6 +124,7 @@ int main() { return Run([] {
   CHECK(!ui.FindSemantics(UiSemanticSelector::Label("old content")).Exists());
   const auto before = ui.CaptureSnapshot();
   ui.Find(UiSelector::Text("Change")).Tap();
+  CHECK(ui.Find(UiSelector::Key("qr")).One().size == (Size{220, 180}));
   CHECK(ui.FindSemantics(UiSemanticSelector::Label("Updated code")).Exists());
   CHECK(!ui.FindSemantics(UiSemanticSelector::Label("Original code")).Exists());
   CHECK(!(before == ui.CaptureSnapshot()));

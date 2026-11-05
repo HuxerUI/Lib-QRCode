@@ -1,4 +1,4 @@
-#include "preview.h"
+#include "app.h"
 #include <huxerui/qrcode.h>
 
 #include <array>
@@ -116,10 +116,10 @@ View PreviewApp() {
                 CrossAlign(CrossAxisAlignment::Stretch), Background{theme.colors.surface_container_low}, CornerRadius(16.0F)),
         Column {
           Text(std::string(FormatName(symbol.Format())) + " preview", TextRole::Title),
-          Barcode(symbol, {
-            .size = square ? Size{360, 360} : Size{560, 200},
-            .label = "Generated " + std::string(FormatName(symbol.Format())),
-          }).Key("symbol-preview"),
+          Barcode(symbol)
+              .With(Frame{.width = square ? 360.0F : 560.0F, .height = square ? 360.0F : 200.0F},
+                    Semantics{.label = "Generated " + std::string(FormatName(symbol.Format()))})
+              .Key("symbol-preview"),
           Text(std::to_string(symbol.Width()) + " × " + std::to_string(symbol.Height()) + " modules, including quiet zone",
                 TextRole::Label),
           Flow {

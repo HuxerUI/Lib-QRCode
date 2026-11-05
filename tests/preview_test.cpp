@@ -1,4 +1,4 @@
-#include "../examples/preview/src/preview.h"
+#include "../examples/preview/src/app.h"
 #include <huxerui/testing/ui_test.h>
 #include "test.h"
 

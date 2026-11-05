@@ -66,6 +66,8 @@ int main() { return Run([] {
   const auto qr = Encode("immutable");
   const auto copied = qr;
   CHECK(copied.Modules().data() == qr.Modules().data());
+  CHECK(copied == qr);
+  CHECK(!(Encode("immutable") == qr));
   CHECK(qr.Width() == qr.Height());
   for(int y = 0; y < qr.Height(); ++y)
     for(int x = 0; x < qr.Width(); ++x)
