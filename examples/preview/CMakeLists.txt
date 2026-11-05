@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
+if(CMAKE_HOST_APPLE AND NOT CMAKE_SYSTEM_NAME AND NOT CMAKE_TOOLCHAIN_FILE
+        AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET AND "$ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS deployment target")
+endif()
 
 # Like other Lib previews, this directory is also an independent application project.
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -18,6 +22,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     endif()
     if(HUXERUI_PROJECT_PLAN_ONLY)
         return()
+    endif()
+    if(NOT HUXERUI_LIBRARY_GRAPH_ONLY)
+        enable_language(CXX)
     endif()
     set(HUXERUI_QRCODE_BUILD_VIEW ON CACHE BOOL "" FORCE)
     set(HUXERUI_QRCODE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
