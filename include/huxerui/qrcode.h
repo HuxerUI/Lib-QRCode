@@ -28,7 +28,7 @@ struct QRCodeOptions {
   bool operator==(const QRCodeOptions&) const = default;
 };
 
-/// Displays a prepared symbol using centered, aspect-preserving native drawing.
+/// Displays a prepared symbol using centered, aspect-preserving Canvas drawing.
 /// No intrinsic layout size is imposed. Supply positive bounds through a parent or Frame modifier.
 /// Quiet zones are part of the symbol. Integer module sizes are used when space permits;
 /// small bounds and fractional display scaling can reduce scan reliability.

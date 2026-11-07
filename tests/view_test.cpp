@@ -88,16 +88,16 @@ int main() { return Run([] {
   CheckPaint(symbol, 241, 320);
   CheckPaint(symbol, 400, 201);
   CheckPaint(Encode("HUXERUI-2026", {.format = BarcodeFormat::Code128}), 640, 160);
-  (void)QRCode("Hello");
-  (void)Barcode("123456", {.format = BarcodeFormat::Code128});
-  (void)Barcode(symbol);
-  (void)QRCode(symbol);
-  Throws<std::invalid_argument>([] { (void)QRCode(Encode("x", {.format = BarcodeFormat::Code128})); });
-  Throws<std::invalid_argument>([] { (void)QRCode("x", {.error_correction = static_cast<ErrorCorrection>(99)}); });
-  Throws<std::invalid_argument>([] { (void)QRCode("x", {.quiet_zone = -2}); });
-  Throws<std::invalid_argument>([&] { (void)Barcode(symbol, {.foreground = {2, 0, 0, 1}}); });
+  QRCODE_TEST_DISCARD(QRCode("Hello"));
+  QRCODE_TEST_DISCARD(Barcode("123456", {.format = BarcodeFormat::Code128}));
+  QRCODE_TEST_DISCARD(Barcode(symbol));
+  QRCODE_TEST_DISCARD(QRCode(symbol));
+  Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(QRCode(Encode("x", {.format = BarcodeFormat::Code128}))); });
+  Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(QRCode("x", {.error_correction = static_cast<ErrorCorrection>(99)})); });
+  Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(QRCode("x", {.quiet_zone = -2})); });
+  Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Barcode(symbol, {.foreground = {2, 0, 0, 1}})); });
   Throws<std::invalid_argument>([&] {
-    (void)Barcode(symbol, {.background = {0, 0, 0, std::numeric_limits<float>::infinity()}});
+    QRCODE_TEST_DISCARD(Barcode(symbol, {.background = {0, 0, 0, std::numeric_limits<float>::infinity()}}));
   });
 
 #ifdef QRCODE_HAS_UI_TESTING
@@ -108,13 +108,13 @@ int main() { return Run([] {
     auto changed = UseState(false);
     auto visible = UseState(true);
     return Column {
-      Button("Change").OnClick([changed]() mutable { changed = !changed.Get(); }),
-      Button("Toggle").OnClick([visible]() mutable { visible = !visible.Get(); }),
+      Button("Change").OnClick([changed]() mutable { changed = !changed; }),
+      Button("Toggle").OnClick([visible]() mutable { visible = !visible; }),
       Scope([=]() -> View {
-        if(!visible.Get()) return View{};
-        return QRCode(changed.Get() ? "new content" : "old content")
-            .With(Frame{.width = changed.Get() ? 220.0F : 180.0F, .height = 180.0F},
-                  Semantics{.label = StringVariant(changed.Get() ? "Updated code" : "Original code")}).Key("qr");
+        if(!visible) return View{};
+        return QRCode(changed ? "new content" : "old content")
+            .With(Frame{.width = changed ? 220.0F : 180.0F, .height = 180.0F},
+                  Semantics{.label = StringVariant(changed ? "Updated code" : "Original code")}).Key("qr");
       }),
     };
   }, {.window = {.initial_size = {640, 480}}, .show_debug_overlay = false});

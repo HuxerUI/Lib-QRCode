@@ -36,7 +36,7 @@ The reviewed Lottie and Charts previews are independent app projects under `exam
 
 Library discovery returns early for `HUXERUI_PROJECT_PLAN_ONLY` and `HUXERUI_LIBRARY_GRAPH_ONLY`, before building native dependencies. Preview and library metadata must describe their actual targets and namespaces. SDK scaffolds and installation hook signatures vary by revision; compare against the project's tested SDK before adopting a newer template.
 
-Lib-QRCode has an independent `examples/preview` build entry, an `example_qrcode` target, shared composition in `src/app.cpp`, a separate application declaration, platform entry files, and its own `HuxerUIProject.cmake`. Its metadata names the actual target and library namespace. Platform entry files do not replace the SDK's native shells or packaging configuration; only the Windows host build has been verified locally.
+Lib-QRCode has an independent `examples/preview` build entry, an `example_qrcode` target, shared composition in `src/app.cpp`, a separate application declaration, platform entry files, and its own `HuxerUIProject.cmake`. Its metadata names the actual target and library namespace. Platform entry files do not replace the SDK's platform shells or packaging configuration; only the Windows host build has been verified locally.
 
 ## Public interface
 

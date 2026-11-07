@@ -2,17 +2,17 @@
 
 [简体中文](README.zh-CN.md)
 
-Native QR codes and barcodes for [HuxerUI](https://github.com/HuxerUI/HuxerUI): generate symbols, render declarative views, export SVG or grayscale pixels, and decode image buffers.
+QR codes and barcodes for [HuxerUI](https://github.com/HuxerUI/HuxerUI): generate symbols, render declarative views, export SVG or grayscale pixels, and decode image buffers.
 
 - C++20; namespace `huxerui::qrcode`, CMake target `HuxerUI::QRCode` (`huxerui_qrcode`).
 - Generate QR Code, Code 128/39/93, EAN-8/13, UPC-A/E, ITF, Codabar, Data Matrix, Aztec, and PDF417.
 - Read those formats plus Micro QR, rMQR, MaxiCode, GS1 DataBar/Expanded/Limited, and DX Film Edge.
 - UTF-8 text, four QR error correction levels, configurable quiet zones, immutable shared symbols.
-- Native `Canvas` rendering with preserved aspect ratio, integer module sizing when space permits, and accessibility labels.
+- `Canvas` rendering with preserved aspect ratio, integer module sizing when space permits, and accessibility labels.
 - Multi-symbol decoding from Gray8, RGB, BGR, RGBA, and BGRA buffers, including padded rows.
 - Vendored ZXing-C++ 2.3.0 with a Windows PDF417 accumulator fix; no build-time downloads for the codec.
 
-The shared codec and views use no platform-specific APIs. Windows builds and tests are verified locally; CI covers standalone codecs on Linux, macOS, and Windows, plus native view tests on Windows. Other HuxerUI backends require their normal SDK/toolchain and have not been verified here.
+The shared codec and views use no platform-specific APIs. Windows builds and tests are verified locally; CI covers standalone codecs on Linux, macOS, and Windows, plus view tests on Windows. Other HuxerUI backends require their normal SDK/toolchain and have not been verified here.
 
 ## Add to a HuxerUI app
 
@@ -98,12 +98,12 @@ Pixels must be top-down with positive dimensions and a nonnegative row stride; z
 - `QRCodeOptions` contains only `error_correction` and `quiet_zone`. `BarcodeStyle`, `QRCodeOptions`, `EncodeOptions`, `DecodeOptions`, and `SvgOptions` support value equality for application-owned configuration.
 - EAN/UPC digits and checksums are validated by the backend. Payloads omitting a check digit may have it added by the backend; decoding returns the full canonical value. Codabar includes start/stop letters. Text restrictions and extended Code 39/93 interpretation follow ZXing.
 - Invalid options, UTF-8, layouts, unsupported encoding formats, or capacity overflow throw `std::invalid_argument`. Out-of-range `IsDark` coordinates throw `std::out_of_range`. Allocation and unexpected internal errors retain their exception categories.
-- Raster/scan dimensions are limited to 64 Mi pixels. Decoding also checks span length and signed backend row-offset limits. Native view bounds follow the SDK's layout validation; an empty drawing area produces no commands.
+- Raster/scan dimensions are limited to 64 Mi pixels. Decoding also checks span length and signed backend row-offset limits. View bounds follow the SDK's layout validation; an empty drawing area produces no commands.
 - SVG supports opaque `0xRRGGBB` foreground/background overrides. Color customization does not guarantee contrast or scan quality.
 
 ## Build and test
 
-Requires CMake 3.20+ and C++20. The native component uses HuxerUI source or SDK; the verified framework revision is `cadb1696cfa7b87d9d2d316b3ecba07b85a46962`.
+Requires CMake 3.20+ and C++20. The view component uses HuxerUI source or SDK; the verified framework revision is `cadb1696cfa7b87d9d2d316b3ecba07b85a46962`.
 
 ```sh
 cmake -S . -B build -DHUXERUI_HOME=/path/to/HuxerUI \
@@ -130,7 +130,7 @@ cmake --build build-core --config Release --parallel
 ctest --test-dir build-core -C Release --output-on-failure
 ```
 
-Both modes expose `HuxerUI::QRCode`. The UI header requires the native build; standalone consumers include only `<huxerui/qrcode/codec.h>`. HuxerUI library-graph and project-plan discovery do not compile or configure ZXing. The pinned backend owns the `ZXing`/`ZXing::ZXing` targets; avoid combining another independently configured ZXing copy in the same CMake build. There is no standalone install/export package in this version; consume it through `add_subdirectory` or `huxerui_use_library`.
+Both modes expose `HuxerUI::QRCode`. The UI header requires the view-enabled build; standalone consumers include only `<huxerui/qrcode/codec.h>`. HuxerUI library-graph and project-plan discovery do not compile or configure ZXing. The pinned backend owns the `ZXing`/`ZXing::ZXing` targets; avoid combining another independently configured ZXing copy in the same CMake build. There is no standalone install/export package in this version; consume it through `add_subdirectory` or `huxerui_use_library`.
 
 The public API follows the [interface conventions](docs/interface-conventions.md) reviewed from FinalScave's libraries.
 

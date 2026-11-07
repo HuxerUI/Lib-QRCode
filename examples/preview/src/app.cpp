@@ -57,30 +57,30 @@ View PreviewApp() {
   const auto application = UseApplication();
   const auto generate = [=] {
     try {
-      generated = Encode(input.Get().text, {
-        .format = writable_formats[format.Get()],
+      generated = Encode(input->text, {
+        .format = writable_formats[format],
         .qr_error_correction = static_cast<ErrorCorrection>(correction.Get()),
       });
       failed = false;
-      status = "Generated " + std::string(FormatName(generated.Get().Format())) + ".";
+      status = "Generated " + std::string(FormatName(generated->Format())) + ".";
       decoded_text = "Choose Decode preview to inspect this symbol.";
     } catch(const std::exception& error) {
       failed = true;
       status = std::string(error.what()) + " Previous preview retained.";
     }
   };
-  return MaterialTheme(dark.Get() ? MaterialDarkThemeSpec() : MaterialLightThemeSpec(), Scope([=] {
+  return MaterialTheme(dark ? MaterialDarkThemeSpec() : MaterialLightThemeSpec(), Scope([=] {
     const auto& theme = UseTheme();
-    const auto symbol = generated.Get();
+    const Symbol symbol = generated;
     const bool square = symbol.Format() == BarcodeFormat::QRCode || symbol.Format() == BarcodeFormat::DataMatrix ||
                          symbol.Format() == BarcodeFormat::Aztec;
     return Column {
       Row {
         Column {
           Text("QRCode & Barcode", TextRole::Title),
-          Text("Generate, inspect, decode and export native symbols.", TextRole::Label),
+          Text("Generate, inspect, decode and export symbols.", TextRole::Label),
         }.With(Grow{}, Spacing(6.0F)),
-        Button(dark.Get() ? "Light theme" : "Dark theme").OnClick([=] { dark = !dark.Get(); }),
+        Button(dark ? "Light theme" : "Dark theme").OnClick([=] { dark = !dark; }),
       }.With(Spacing(16.0F), CrossAlign(CrossAxisAlignment::Center)),
       ScrollView(Row {
         Column {
@@ -99,14 +99,14 @@ View PreviewApp() {
           Text("QR error correction", TextRole::Label),
           SegmentedButton({"L", "M", "Q", "H"}, correction)
               .OnChanged([=](std::size_t index) { correction = index; })
-              .With(Enabled(writable_formats[format.Get()] == BarcodeFormat::QRCode)),
+              .With(Enabled(writable_formats[format] == BarcodeFormat::QRCode)),
           Text("Low / Medium / Quartile / High", TextRole::Label),
           Button("Generate").OnClick(generate),
           Button("Load sample").OnClick([=] {
-            input = TextEditingValue::FromText(Sample(writable_formats[format.Get()]));
+            input = TextEditingValue::FromText(Sample(writable_formats[format]));
             generate();
           }),
-          Button("Use Unicode sample").With(Enabled(writable_formats[format.Get()] == BarcodeFormat::QRCode))
+          Button("Use Unicode sample").With(Enabled(writable_formats[format] == BarcodeFormat::QRCode))
               .OnClick([=] {
                 input = TextEditingValue::FromText("HuxerUI / 二维码 / 日本語 / 😀");
                 generate();
@@ -124,13 +124,13 @@ View PreviewApp() {
                 TextRole::Label),
           Flow {
             Button("Decode preview").OnClick([=] {
-              const auto image = generated.Get().Rasterize(4);
-              const auto result = Decode(image.View(), {.formats = {generated.Get().Format()}});
+              const auto image = generated->Rasterize(4);
+              const auto result = Decode(image.View(), {.formats = {generated->Format()}});
               decoded_text = result ? "Decoded " + std::string(FormatName(result->format)) + ": " + result->text : "No code detected.";
             }),
-            Button("Export SVG").With(Enabled(!exporting.Get() && picker->CanSaveFiles())).OnClick([=] {
+            Button("Export SVG").With(Enabled(!exporting && picker->CanSaveFiles())).OnClick([=] {
               exporting = true;
-              const auto svg = generated.Get().ToSvg({.scale = 8});
+              const auto svg = generated->ToSvg({.scale = 8});
               tasks.Launch([=]() -> Task<void> {
                 try {
                   const File export_file(application.Directories().temporary_directory, "huxerui-code.svg");
@@ -154,7 +154,7 @@ View PreviewApp() {
             }),
           }.With(Spacing(12.0F)),
           SelectionArea { Text(decoded_text).Key("decode-result") },
-          Text(status).With(Foreground(failed.Get() ? theme.colors.error : theme.colors.primary)).Key("status"),
+          Text(status).With(Foreground(failed ? theme.colors.error : theme.colors.primary)).Key("status"),
         }.With(Grow{}, Padding(20.0F), Spacing(18.0F), CrossAlign(CrossAxisAlignment::Center),
                 Background{theme.colors.surface}, CornerRadius(16.0F)),
       }.With(Spacing(20.0F), CrossAlign(CrossAxisAlignment::Start))).With(Grow{}, ScrollBar{}),

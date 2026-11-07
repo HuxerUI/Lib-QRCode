@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-[HuxerUI](https://github.com/HuxerUI/HuxerUI) 的原生二维码／条码扩展，提供生成、声明式显示、SVG／灰度图导出和图像识别。使用 C++20，命名空间为 `huxerui::qrcode`，CMake 目标为 `HuxerUI::QRCode`。
+[HuxerUI](https://github.com/HuxerUI/HuxerUI) 的二维码／条码扩展，提供生成、声明式显示、SVG／灰度图导出和图像识别。使用 C++20，命名空间为 `huxerui::qrcode`，CMake 目标为 `HuxerUI::QRCode`。
 
 支持生成 QR Code、Code 128/39/93、EAN-8/13、UPC-A/E、ITF、Codabar、Data Matrix、Aztec 和 PDF417；还可以识别 Micro QR、rMQR、MaxiCode、GS1 DataBar/Expanded/Limited 和 DX Film Edge。
 
@@ -33,7 +33,7 @@ View Ticket() {
 }
 ```
 
-`QRCode(text, QRCodeOptions)` 固定生成 QR Code，默认 Medium 纠错等级；`Barcode(text, EncodeOptions)` 显式接收编码配置。两者均支持预生成的 `Symbol`，其中 `QRCode(symbol)` 会校验码制。所有视图重载均不内置尺寸，由父布局或 `.With(Frame{...})` 提供边界。`BarcodeStyle` 只控制前景与背景颜色，默认黑白配色在深浅主题下保持一致。原生视图使用 `Canvas`，保持比例，空间足够时按整数 DIP 模块绘制。
+`QRCode(text, QRCodeOptions)` 固定生成 QR Code，默认 Medium 纠错等级；`Barcode(text, EncodeOptions)` 显式接收编码配置。两者均支持预生成的 `Symbol`，其中 `QRCode(symbol)` 会校验码制。所有视图重载均不内置尺寸，由父布局或 `.With(Frame{...})` 提供边界。`BarcodeStyle` 只控制前景与背景颜色，默认黑白配色在深浅主题下保持一致。视图使用 `Canvas`，保持比例，空间足够时按整数 DIP 模块绘制。
 
 默认留白：QR 四模块，一维条码十模块，其他二维格式两模块，均应用到四周。`quiet_zone=-1` 使用默认值，也可设置 0..256。保持留白完整，避免过小尺寸、裁剪、变形或覆盖图案影响扫描。
 
@@ -65,7 +65,7 @@ auto results = DecodeAll({rgba_bytes, width, height, PixelFormat::RGBA8, row_str
 
 ## 构建与测试
 
-需要 CMake 3.20+ 和 C++20；原生视图还需要 HuxerUI 源码或 SDK。已验证的框架版本为 `cadb1696cfa7b87d9d2d316b3ecba07b85a46962`。
+需要 CMake 3.20+ 和 C++20；视图组件还需要 HuxerUI 源码或 SDK。已验证的框架版本为 `cadb1696cfa7b87d9d2d316b3ecba07b85a46962`。
 
 ```sh
 cmake -S . -B build -DHUXERUI_HOME=/path/to/HuxerUI \
@@ -96,7 +96,7 @@ ctest --test-dir build-core -C Release --output-on-failure
 
 核心内置固定版本的 ZXing-C++ 2.3.0，无需联网下载，并修复了 Windows PDF417 48 位字节压缩累加器被 32 位 `long` 截断的问题。CMake 项目请避免再引入另一个独立配置的 ZXing 副本；当前通过 `add_subdirectory` 或 `huxerui_use_library` 接入，不提供独立安装包。
 
-本地验证平台为 Windows；CI 覆盖 Linux、macOS、Windows 核心，以及 Windows 原生视图。其他 HuxerUI 后端未在本项目实测。完整 API、输入限制和行为约定见 [英文文档](README.md)。
+本地验证平台为 Windows；CI 覆盖 Linux、macOS、Windows 核心，以及 Windows 视图。其他 HuxerUI 后端未在本项目实测。完整 API、输入限制和行为约定见 [英文文档](README.md)。
 
 公开接口按 FinalScave 的库风格设计，依据见 [接口约定](docs/interface-conventions.md)。
 

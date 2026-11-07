@@ -139,7 +139,7 @@ bool Symbol::IsDark(int x, int y) const {
 }
 
 std::string_view FormatName(BarcodeFormat format) {
-  (void)ToBackend(format);
+  ToBackend(format);
   return names[static_cast<std::size_t>(format)];
 }
 
