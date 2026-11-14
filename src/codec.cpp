@@ -21,10 +21,10 @@ constexpr std::array formats{
   ZXing::BarcodeFormat::QRCode, ZXing::BarcodeFormat::Code128, ZXing::BarcodeFormat::Code39,
   ZXing::BarcodeFormat::Code93, ZXing::BarcodeFormat::EAN8, ZXing::BarcodeFormat::EAN13,
   ZXing::BarcodeFormat::UPCA, ZXing::BarcodeFormat::UPCE, ZXing::BarcodeFormat::ITF,
-  ZXing::BarcodeFormat::Codabar, ZXing::BarcodeFormat::DataMatrix, ZXing::BarcodeFormat::Aztec,
+  ZXing::BarcodeFormat::Codabar, ZXing::BarcodeFormat::DataMatrix, ZXing::BarcodeFormat::AztecCode,
   ZXing::BarcodeFormat::PDF417, ZXing::BarcodeFormat::MicroQRCode, ZXing::BarcodeFormat::RMQRCode,
-  ZXing::BarcodeFormat::MaxiCode, ZXing::BarcodeFormat::DataBar, ZXing::BarcodeFormat::DataBarExpanded,
-  ZXing::BarcodeFormat::DataBarLimited, ZXing::BarcodeFormat::DXFilmEdge,
+  ZXing::BarcodeFormat::MaxiCode, ZXing::BarcodeFormat::DataBarOmni, ZXing::BarcodeFormat::DataBarExp,
+  ZXing::BarcodeFormat::DataBarLtd, ZXing::BarcodeFormat::DXFilmEdge,
 };
 constexpr std::array<std::string_view, formats.size()> names{
   "QR Code", "Code 128", "Code 39", "Code 93", "EAN-8", "EAN-13", "UPC-A", "UPC-E", "ITF", "Codabar",
@@ -42,10 +42,49 @@ ZXing::BarcodeFormat ToBackend(BarcodeFormat format) {
   return formats[index];
 }
 
-BarcodeFormat FromBackend(ZXing::BarcodeFormat format) {
+std::optional<BarcodeFormat> FromBackend(ZXing::BarcodeFormat format) {
+  using Backend = ZXing::BarcodeFormat;
+  switch(format) {
+    case Backend::QRCodeModel1:
+    case Backend::QRCodeModel2: return BarcodeFormat::QRCode;
+    case Backend::Code39Std:
+    case Backend::Code39Ext: return BarcodeFormat::Code39;
+    case Backend::Aztec: return BarcodeFormat::Aztec;
+    case Backend::CompactPDF417: return BarcodeFormat::PDF417;
+    case Backend::DataBar:
+    case Backend::DataBarStk:
+    case Backend::DataBarStkOmni: return BarcodeFormat::DataBar;
+    case Backend::DataBarExpStk: return BarcodeFormat::DataBarExpanded;
+    default: break;
+  }
   const auto found = std::find(formats.begin(), formats.end(), format);
-  if(found == formats.end()) throw std::logic_error("HuxerUI QRCode: unrecognized backend format");
+  if(found == formats.end()) return std::nullopt;
   return static_cast<BarcodeFormat>(found - formats.begin());
+}
+
+void AppendReadFormats(std::vector<ZXing::BarcodeFormat>& filter, BarcodeFormat format, bool pure) {
+  using Backend = ZXing::BarcodeFormat;
+  filter.push_back(ToBackend(format));
+  switch(format) {
+    case BarcodeFormat::QRCode:
+      // The pure QR detector checks the family rather than the individual model IDs.
+      if(!pure) {
+        filter.back() = Backend::QRCodeModel2;
+        filter.push_back(Backend::QRCodeModel1);
+      }
+      break;
+    case BarcodeFormat::PDF417:
+      filter.push_back(Backend::CompactPDF417);
+      break;
+    case BarcodeFormat::DataBar:
+      filter.push_back(Backend::DataBarStk);
+      filter.push_back(Backend::DataBarStkOmni);
+      break;
+    case BarcodeFormat::DataBarExpanded:
+      filter.push_back(Backend::DataBarExpStk);
+      break;
+    default: break;
+  }
 }
 
 bool IsLinear(BarcodeFormat format) {
@@ -95,6 +134,7 @@ std::string HexColor(std::uint32_t color) {
 
 ZXing::ImageView BackendImage(ImageView image) {
   CheckedPixels(image.width, image.height);
+  if(image.width > 65535 || image.height > 65535) Invalid("image dimensions must be at most 65535 per side");
   ZXing::ImageFormat format;
   int channels;
   switch(image.format) {
@@ -144,12 +184,30 @@ std::string_view FormatName(BarcodeFormat format) {
 }
 
 bool CanEncode(BarcodeFormat format) noexcept {
-  return static_cast<std::size_t>(format) <= static_cast<std::size_t>(BarcodeFormat::PDF417);
+  return static_cast<std::size_t>(format) <= static_cast<std::size_t>(BarcodeFormat::PDF417) && CanDecode(format);
+}
+
+bool CanDecode(BarcodeFormat format) noexcept {
+  if(IsLinear(format)) return ZXING_ENABLE_1D;
+  switch(format) {
+    case BarcodeFormat::QRCode:
+    case BarcodeFormat::MicroQRCode:
+    case BarcodeFormat::RMQRCode: return ZXING_ENABLE_QRCODE;
+    case BarcodeFormat::Aztec: return ZXING_ENABLE_AZTEC;
+    case BarcodeFormat::DataMatrix: return ZXING_ENABLE_DATAMATRIX;
+    case BarcodeFormat::PDF417: return ZXING_ENABLE_PDF417;
+    case BarcodeFormat::MaxiCode: return ZXING_ENABLE_MAXICODE;
+    case BarcodeFormat::DataBar:
+    case BarcodeFormat::DataBarExpanded:
+    case BarcodeFormat::DataBarLimited:
+    case BarcodeFormat::DXFilmEdge: return ZXING_ENABLE_1D;
+    default: return false;
+  }
 }
 
 Symbol Encode(std::string_view text, EncodeOptions options) {
   const auto format = ToBackend(options.format);
-  if(!CanEncode(options.format)) Invalid("the selected format is decode-only");
+  if(!CanEncode(options.format)) Invalid("encoding is unavailable for the selected format");
   if(text.empty() || text.size() > 8192) Invalid("text length must be 1..8192 UTF-8 bytes");
   ValidateUtf8(text);
   if(options.quiet_zone < -1 || options.quiet_zone > 256) Invalid("quiet zone must be -1..256 modules");
@@ -211,25 +269,56 @@ std::string Symbol::ToSvg(SvgOptions options) const {
 std::vector<DecodeResult> DecodeAll(ImageView image, DecodeOptions options) {
   const auto input = BackendImage(image);
   if(options.max_symbols < 1 || options.max_symbols > 255) Invalid("max_symbols must be 1..255");
-  ZXing::BarcodeFormats formats_filter;
-  for(auto format : options.formats) formats_filter |= ToBackend(format);
+  std::vector<ZXing::BarcodeFormat> filter;
+  if(options.formats.empty()) {
+    for(std::size_t i = 0; i < formats.size(); ++i) {
+      const auto format = static_cast<BarcodeFormat>(i);
+      if(CanDecode(format)) AppendReadFormats(filter, format, options.pure);
+    }
+  } else {
+    for(auto format : options.formats) {
+      if(static_cast<std::size_t>(format) >= formats.size()) Invalid("invalid barcode format");
+      if(CanDecode(format)) AppendReadFormats(filter, format, options.pure);
+    }
+  }
+  if(filter.empty()) return {};
   ZXing::ReaderOptions hints;
-  hints.setFormats(formats_filter).setTryHarder(options.try_harder).setTryRotate(options.try_rotate)
-      .setTryInvert(options.try_invert).setIsPure(options.pure).setTextMode(ZXing::TextMode::Plain)
-      .setMaxNumberOfSymbols(static_cast<std::uint8_t>(options.max_symbols));
+  hints.formats(ZXing::BarcodeFormats(std::move(filter))).tryHarder(options.try_harder).tryRotate(options.try_rotate)
+      .tryInvert(options.try_invert).isPure(options.pure).textMode(ZXing::TextMode::Plain)
+      .maxNumberOfSymbols(static_cast<std::uint8_t>(options.max_symbols));
   std::vector<DecodeResult> results;
   for(const auto& decoded : ZXing::ReadBarcodes(input, hints)) {
     if(!decoded.isValid()) continue;
+    auto format = FromBackend(decoded.format());
+    if(!format || !CanDecode(*format)) continue;
+    auto decoded_text = decoded.text();
+    // EAN-13 with a leading zero shares the UPC-A representation.
+    const bool accepts_upca = options.formats.empty() ||
+        std::find(options.formats.begin(), options.formats.end(), BarcodeFormat::UPCA) != options.formats.end();
+    if(*format == BarcodeFormat::EAN13 && accepts_upca && decoded_text.size() == 13 && decoded_text.front() == '0') {
+      format = BarcodeFormat::UPCA;
+    }
+    if(!options.formats.empty() &&
+       std::find(options.formats.begin(), options.formats.end(), *format) == options.formats.end()) continue;
     DecodeResult result;
-    result.format = FromBackend(decoded.format());
-    result.text = decoded.text();
-    result.bytes.assign(decoded.bytes().begin(), decoded.bytes().end());
+    result.format = *format;
+    if(*format == BarcodeFormat::UPCA && decoded_text.size() == 13 && decoded_text.front() == '0') {
+      decoded_text.erase(0, 1);
+      result.bytes.assign(decoded_text.begin(), decoded_text.end());
+    } else if(*format == BarcodeFormat::UPCE) {
+      const auto original = decoded.extra(ZXing::BarcodeExtra::UPCE);
+      if(!original.empty()) decoded_text = original;
+      result.bytes.assign(decoded_text.begin(), decoded_text.end());
+    } else {
+      result.bytes.assign(decoded.bytes().begin(), decoded.bytes().end());
+    }
+    result.text = std::move(decoded_text);
     for(std::size_t i = 0; i < result.position.size(); ++i)
       result.position[i] = {decoded.position()[i].x, decoded.position()[i].y};
     result.orientation = decoded.orientation();
     result.mirrored = decoded.isMirrored();
     result.inverted = decoded.isInverted();
-    result.error_correction = decoded.ecLevel();
+    result.error_correction = decoded.extra(ZXing::BarcodeExtra::ECLevel);
     result.symbology_identifier = decoded.symbologyIdentifier();
     results.push_back(std::move(result));
   }

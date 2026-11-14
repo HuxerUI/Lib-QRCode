@@ -21,8 +21,10 @@ enum class BarcodeFormat {
 
 /// Returns a human-readable English format name. Rejects invalid enum values.
 [[nodiscard]] std::string_view FormatName(BarcodeFormat format);
-/// Returns false for reader-only formats and invalid enum values.
+/// Returns false for reader-only formats, formats disabled at build time, and invalid enum values.
 [[nodiscard]] bool CanEncode(BarcodeFormat format) noexcept;
+/// Returns whether the reader for this format is compiled into the library.
+[[nodiscard]] bool CanDecode(BarcodeFormat format) noexcept;
 
 enum class ErrorCorrection { Low, Medium, Quartile, High };
 
@@ -95,7 +97,7 @@ private:
 [[nodiscard]] Symbol Encode(std::string_view text, EncodeOptions options = {});
 
 struct DecodeOptions {
-  /// Empty means every supported reader format.
+  /// Empty means every compiled-in reader format. Disabled formats in an explicit filter are skipped.
   std::vector<BarcodeFormat> formats;
   bool try_harder = true;
   bool try_rotate = true;
@@ -127,7 +129,7 @@ struct DecodeResult {
 };
 
 /// Returns only successfully decoded symbols. No match is an empty vector/nullopt, not an error.
-/// Invalid image layouts/options throw std::invalid_argument. Maximum input: 64 Mi pixels.
+/// Invalid image layouts/options throw std::invalid_argument. Maximum input: 64 Mi pixels and 65,535 per side.
 [[nodiscard]] std::vector<DecodeResult> DecodeAll(ImageView image, DecodeOptions options = {});
 [[nodiscard]] std::optional<DecodeResult> Decode(ImageView image, DecodeOptions options = {});
 

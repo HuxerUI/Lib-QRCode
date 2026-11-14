@@ -3,13 +3,15 @@
 ## ZXing-C++
 
 - Upstream: https://github.com/zxing-cpp/zxing-cpp
-- Version: 2.3.0, commit `d6068bcebeb8fd9f0d35a99b00d202be86a14dbe`
+- Version: 3.1.1, commit `287c85df6f961c8efbfb5ffd736cd9457b8b890e`
 - Location: `third_party/zxing/core`
 - License: Apache-2.0; see [LICENSE](third_party/zxing/LICENSE) and per-file copyright notices.
 
-The core sources and CMake files are vendored with one local fix: `PDFHighLevelEncoder.cpp` uses `int64_t` rather than `long` for its 48-bit byte-compaction accumulator, preventing truncation on Windows (LLP64). The unused `core/src/libzint` symlink directory is excluded. Only the built-in writers (`ZXING_WRITERS=OLD`) and readers are enabled; no libzint, network fetch, or experimental API is used. Upstream tests, examples, wrappers, and top-level build files are not distributed. This intentionally pins the 2.x built-in writer API rather than the newer libzint backend.
+The core sources and CMake files include two local changes. `PDFHighLevelEncoder.cpp` uses `int64_t` for the 48-bit byte-compaction accumulator to prevent truncation on Windows (LLP64). The core CMake file accepts `ZXING_LIB_TYPE=OBJECT` so the iOS library archive can carry its backend into the application core.
 
-To update, fetch an upstream revision into a temporary checkout, copy its `core` directory and root `LICENSE`, exclude `core/src/libzint`, preserve the accumulator fix if still needed, update this revision, and run the codec and view test suites before committing.
+This integration enables the built-in writers (`ZXING_WRITERS=OLD`) and readers. It keeps `MultiFormatWriter` so encoding height and character-set handling stay consistent with the public API. The unused `core/src/libzint` symlink directory, upstream wrappers, tests and examples are omitted. The build uses no libzint or experimental APIs.
+
+To update, copy the upstream `core` directory and root `LICENSE` from the new revision, excluding `core/src/libzint`. Recheck the two local changes, update this revision, then run the full and reduced codec builds, view tests and mobile builds.
 
 ## libzueci
 

@@ -42,3 +42,18 @@ jobs:
         run: cmake --build build --config Release --parallel 2
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+
+  codec-qr-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure QR family only
+        run: >-
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DHUXERUI_QRCODE_BUILD_VIEW=OFF -DHUXERUI_QRCODE_BUILD_TESTS=ON
+          -DZXING_ENABLE_1D=OFF -DZXING_ENABLE_AZTEC=OFF -DZXING_ENABLE_DATAMATRIX=OFF
+          -DZXING_ENABLE_MAXICODE=OFF -DZXING_ENABLE_PDF417=OFF
+      - name: Build and test
+        run: |
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure

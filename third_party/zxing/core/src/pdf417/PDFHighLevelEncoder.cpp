@@ -170,19 +170,14 @@ static void EncodingECI(int eci, std::vector<int>& buffer)
 	}
 }
 
-static bool IsDigit(int ch)
-{
-	return ch >= '0' && ch <= '9';
-}
-
 static bool IsAlphaUpper(int ch)
 {
-	return ch == ' ' || (ch >= 'A' && ch <= 'Z');
+	return ch == ' ' || IsUpper(ch);
 }
 
 static bool IsAlphaLower(int ch)
 {
-	return ch == ' ' || (ch >= 'a' && ch <= 'z');
+	return ch == ' ' || IsLower(ch);
 }
 
 static bool IsMixed(int ch)
@@ -339,14 +334,13 @@ static void EncodeBinary(const std::string& bytes, int startpos, int count, int 
 	if (count >= 6) {
 		int chars[5];
 		while ((startpos + count - idx) >= 6) {
-			// Lib-QRCode: six bytes require 48 bits, including on LLP64 Windows.
 			int64_t t = 0;
 			for (int i = 0; i < 6; i++) {
 				t <<= 8;
 				t += bytes[idx + i] & 0xff;
 			}
-			for (int i = 0; i < 5; i++) {
-				chars[i] = t % 900;
+			for (int &c : chars) {
+				c = static_cast<int>(t % 900);
 				t /= 900;
 			}
 			for (int i = 4; i >= 0; i--) {

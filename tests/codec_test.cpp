@@ -10,6 +10,7 @@
 using namespace huxerui::qrcode;
 
 void RoundTrip(std::string_view text, EncodeOptions options = {}) {
+  if(!CanEncode(options.format)) return;
   const auto symbol = Encode(text, options);
   CHECK(symbol.Width() > 0 && symbol.Height() > 0);
   CHECK(symbol.Modules().size() == static_cast<std::size_t>(symbol.Width()) * symbol.Height());
@@ -29,7 +30,7 @@ void RoundTrip(std::string_view text, EncodeOptions options = {}) {
   }
 }
 
-int main() { return Run([] {
+void CheckQr() {
   constexpr int fixture_size = static_cast<int>(qr_reference.size()) * 4;
   GrayImage reference{fixture_size, fixture_size, std::vector<std::uint8_t>(fixture_size * fixture_size)};
   for(int y = 0; y < fixture_size; ++y)
@@ -49,20 +50,6 @@ int main() { return Run([] {
     const auto image = Encode("correction", {.qr_error_correction = correction}).Rasterize();
     CHECK(Decode(image.View())->error_correction == name);
   }
-  for(auto format : {BarcodeFormat::Code128, BarcodeFormat::Code39, BarcodeFormat::Code93,
-                      BarcodeFormat::DataMatrix, BarcodeFormat::Aztec, BarcodeFormat::PDF417})
-    RoundTrip("HUXERUI-2026", {.format = format});
-  for(auto format : {BarcodeFormat::DataMatrix, BarcodeFormat::Aztec, BarcodeFormat::PDF417})
-    RoundTrip("中文 😀", {.format = format});
-  RoundTrip(std::string_view("\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C", 12),
-            {.format = BarcodeFormat::PDF417});
-  RoundTrip("96385074", {.format = BarcodeFormat::EAN8});
-  RoundTrip("5901234123457", {.format = BarcodeFormat::EAN13});
-  RoundTrip("012345678905", {.format = BarcodeFormat::UPCA});
-  RoundTrip("01234565", {.format = BarcodeFormat::UPCE});
-  RoundTrip("12345678", {.format = BarcodeFormat::ITF});
-  RoundTrip("A123456B", {.format = BarcodeFormat::Codabar});
-
   const auto qr = Encode("immutable");
   const auto copied = qr;
   CHECK(copied.Modules().data() == qr.Modules().data());
@@ -83,6 +70,7 @@ int main() { return Run([] {
       CHECK(raster.pixels[static_cast<std::size_t>(y) * raster.width + x] == (qr.IsDark(x / 2, y / 2) ? 0 : 255));
   CHECK(Decode(raster.View(), {.pure = true})->text == "immutable");
   CHECK(!Decode(raster.View(), {.formats = {BarcodeFormat::Code128}}));
+  CHECK(Decode(raster.View(), {.formats = {BarcodeFormat::Code128, BarcodeFormat::QRCode}})->text == "immutable");
   auto inverted = raster;
   for(auto& pixel : inverted.pixels) pixel = 255 - pixel;
   CHECK(Decode(inverted.View())->text == "immutable");
@@ -136,7 +124,6 @@ int main() { return Run([] {
   CHECK(qr.ToSvg({.foreground = 0x123456}).find("#123456") != std::string::npos);
   CHECK(FormatName(BarcodeFormat::QRCode) == "QR Code");
   for(int i = 0; i < 20; ++i) CHECK(!FormatName(static_cast<BarcodeFormat>(i)).empty());
-  CHECK(CanEncode(BarcodeFormat::Code128));
   CHECK(!CanEncode(BarcodeFormat::MicroQRCode));
   CHECK(!CanEncode(static_cast<BarcodeFormat>(-1)));
 
@@ -164,6 +151,7 @@ int main() { return Run([] {
   Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(qr.ToSvg({.foreground = 0xFF000000})); });
   Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(Decode({})); });
   Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(Decode({{}, 10, 10})); });
+  Throws<std::invalid_argument>([] { QRCODE_TEST_DISCARD(Decode({{}, 65536, 1})); });
   Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Decode({raster.pixels, -1, 10})); });
   Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Decode({raster.pixels, 1, 1, static_cast<PixelFormat>(99)})); });
   Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Decode({raster.pixels, 10, 10, PixelFormat::RGBA8, 39})); });
@@ -185,4 +173,35 @@ int main() { return Run([] {
   }
   for(auto& worker : workers) worker.join();
   CHECK(std::all_of(passed.begin(), passed.end(), [](bool value) { return value; }));
+}
+
+int main() { return Run([] {
+  const auto capabilities = std::to_array<std::pair<BarcodeFormat, bool>>({
+    {BarcodeFormat::QRCode, QRCODE_TEST_QRCODE}, {BarcodeFormat::Code128, QRCODE_TEST_1D},
+    {BarcodeFormat::Aztec, QRCODE_TEST_AZTEC}, {BarcodeFormat::DataMatrix, QRCODE_TEST_DATAMATRIX},
+    {BarcodeFormat::PDF417, QRCODE_TEST_PDF417}, {BarcodeFormat::MaxiCode, QRCODE_TEST_MAXICODE},
+  });
+  const GrayImage white{64, 64, std::vector<std::uint8_t>(64 * 64, 255)};
+  for(const auto [format, enabled] : capabilities) {
+    CHECK(CanDecode(format) == enabled);
+    CHECK(CanEncode(format) == (enabled && format != BarcodeFormat::MaxiCode));
+    if(!enabled) {
+      Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Encode("123456", {.format = format})); });
+      CHECK(!Decode(white.View(), {.formats = {format}}));
+    }
+  }
+  if(CanEncode(BarcodeFormat::QRCode)) CheckQr();
+  for(auto format : {BarcodeFormat::Code128, BarcodeFormat::Code39, BarcodeFormat::Code93,
+                      BarcodeFormat::DataMatrix, BarcodeFormat::Aztec, BarcodeFormat::PDF417})
+    RoundTrip("HUXERUI-2026", {.format = format});
+  for(auto format : {BarcodeFormat::DataMatrix, BarcodeFormat::Aztec, BarcodeFormat::PDF417})
+    RoundTrip("中文 😀", {.format = format});
+  RoundTrip(std::string_view("\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C", 12),
+            {.format = BarcodeFormat::PDF417});
+  RoundTrip("96385074", {.format = BarcodeFormat::EAN8});
+  RoundTrip("5901234123457", {.format = BarcodeFormat::EAN13});
+  RoundTrip("012345678905", {.format = BarcodeFormat::UPCA});
+  RoundTrip("01234565", {.format = BarcodeFormat::UPCE});
+  RoundTrip("12345678", {.format = BarcodeFormat::ITF});
+  RoundTrip("A123456B", {.format = BarcodeFormat::Codabar});
 }); }
