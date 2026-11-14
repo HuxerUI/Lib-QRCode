@@ -59,7 +59,7 @@ auto results = DecodeAll({rgba_bytes, width, height, PixelFormat::RGBA8, row_str
 
 识别支持 Gray8、RGB、BGR、RGBA 和 BGRA，支持行尾填充；`row_stride=0` 表示紧密排列。输入是同步借用的 `std::span<const std::uint8_t>`，调用期间必须保持有效。结果拥有 UTF-8 文本、原始字节、码制、角点、方向、镜像／反色信息等。未识别到返回空值；非法参数抛出 `std::invalid_argument`。Alpha 不参与识别，透明图需先合成背景。
 
-输入文本必须是 1..8192 字节的合法 UTF-8，各码制另有容量和字符限制。条码高度可设 1..1024 模块。EAN/UPC 支持后端的校验位校验／补全规则，识别返回规范形式。光栅图和识别图像上限为 64 Mi 像素。相机捕获、权限、文件加载、YUV 转换、后台任务与扫描去重由应用负责；连续且像素步长为一的亮度平面可作为 Gray8 传入。
+输入文本必须是 1..8192 字节的合法 UTF-8，各码制另有容量和字符限制。条码高度可设 1..1024 模块。EAN/UPC 支持后端的校验位校验／补全规则，识别返回规范形式。光栅图和识别图像上限为 64 Mi 像素，识别时单边最多 65,535 像素。相机捕获、权限、文件加载、YUV 转换、后台任务与扫描去重由应用负责。连续且像素步长为一的亮度平面可作为 Gray8 传入。
 
 无障碍默认只提供码制名称作为图像标签，不自动朗读载荷；通过 `.With(Semantics{.label = ...})` 设置应用需要的描述，支持 `StringVariant` 和本地化字符串资源。`QRCodeOptions`、`BarcodeStyle` 与编解码配置均支持值比较。
 
@@ -76,7 +76,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-示例遵循其他 Lib 的结构，位于 [`examples/preview`](examples/preview/README.md)，目标为 `example_qrcode`，共享界面位于 `src/app.cpp`，平台入口位于 `platform/`。支持选择 13 种码制、编辑载荷、设置 QR 纠错等级、载入合法示例／Unicode 示例、切换主题、识别预览，并通过系统保存对话框导出 SVG。输入不合法时显示错误并保留上次有效预览。
+示例遵循其他 Lib 的结构，位于 [`examples/preview`](examples/preview/README.md)，目标为 `example_qrcode`，共享界面位于 `src/app.cpp`，平台入口位于 `platform/`。支持选择已启用的码制、编辑载荷、设置 QR 纠错等级、载入示例、切换主题、识别预览和独立生成的样图，以及通过系统保存对话框导出 SVG。窄屏使用纵向布局。输入不合法时显示错误并保留上次有效预览。
 
 也可以单独构建 Demo：
 
@@ -94,9 +94,21 @@ cmake --build build-core --config Release --parallel
 ctest --test-dir build-core -C Release --output-on-failure
 ```
 
-核心内置固定版本的 ZXing-C++ 2.3.0，无需联网下载，并修复了 Windows PDF417 48 位字节压缩累加器被 32 位 `long` 截断的问题。CMake 项目请避免再引入另一个独立配置的 ZXing 副本；当前通过 `add_subdirectory` 或 `huxerui_use_library` 接入，不提供独立安装包。
+核心内置 ZXing-C++ 3.1.1，无需联网下载，保留了 Windows PDF417 的 48 位字节压缩累加器修复。CMake 项目请避免再引入另一个独立配置的 ZXing 副本。当前通过 `add_subdirectory` 或 `huxerui_use_library` 接入，不提供独立安装/导出包。
 
-本地验证平台为 Windows；CI 覆盖 Linux、macOS、Windows 核心，以及 Windows 视图。其他 HuxerUI 后端未在本项目实测。完整 API、输入限制和行为约定见 [英文文档](README.md)。
+### 按码制族裁剪编译
+
+默认启用全部码制族。接入方可直接在 CMake 配置时传上游 `ZXING_ENABLE_*` 开关，也可以在引入库前设置。比如只保留 QR 族：
+
+```sh
+cmake -S . -B build-qr-only -DHUXERUI_QRCODE_BUILD_VIEW=OFF \
+  -DZXING_ENABLE_1D=OFF -DZXING_ENABLE_AZTEC=OFF -DZXING_ENABLE_DATAMATRIX=OFF \
+  -DZXING_ENABLE_MAXICODE=OFF -DZXING_ENABLE_PDF417=OFF
+```
+
+六个开关分别对应 `1D`、`AZTEC`、`DATAMATRIX`、`MAXICODE`、`PDF417`、`QRCODE`，其中 QR Code、Micro QR、rMQR 同属 QR 族。调用方可用 `CanEncode`、`CanDecode` 查询当前构建的能力，Demo 会自动过滤不可写码制。尝试编码已关闭的码制会抛出 `std::invalid_argument`，解码过滤列表会跳过已关闭的码制。运行时的 `DecodeOptions::formats` 用于限制本次搜索。
+
+CI 配置覆盖三桌面平台独立核心、Windows 视图、QR 族裁剪构建，以及 Android 和 iOS Simulator 的 Demo。移动构建和验证范围见 [Demo 说明](examples/preview/README.md)，完整 API 见 [英文文档](README.md)。
 
 公开接口按 FinalScave 的库风格设计，依据见 [接口约定](docs/interface-conventions.md)。
 

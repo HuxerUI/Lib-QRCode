@@ -10,9 +10,9 @@ QR codes and barcodes for [HuxerUI](https://github.com/HuxerUI/HuxerUI): generat
 - UTF-8 text, four QR error correction levels, configurable quiet zones, immutable shared symbols.
 - `Canvas` rendering with preserved aspect ratio, integer module sizing when space permits, and accessibility labels.
 - Multi-symbol decoding from Gray8, RGB, BGR, RGBA, and BGRA buffers, including padded rows.
-- Vendored ZXing-C++ 2.3.0 with a Windows PDF417 accumulator fix; no build-time downloads for the codec.
+- Vendored ZXing-C++ 3.1.1 with build-time format-family selection and a Windows PDF417 accumulator fix. The codec needs no build-time downloads.
 
-The shared codec and views use no platform-specific APIs. Windows builds and tests are verified locally; CI covers standalone codecs on Linux, macOS, and Windows, plus view tests on Windows. Other HuxerUI backends require their normal SDK/toolchain and have not been verified here.
+The shared codec and views use no platform-specific APIs. The CI configuration covers standalone codecs on Linux, macOS, and Windows, view tests on Windows, and Android and iOS Simulator preview builds. See the [preview guide](examples/preview/README.md) for mobile verification and its scope.
 
 ## Add to a HuxerUI app
 
@@ -98,7 +98,7 @@ Pixels must be top-down with positive dimensions and a nonnegative row stride; z
 - `QRCodeOptions` contains only `error_correction` and `quiet_zone`. `BarcodeStyle`, `QRCodeOptions`, `EncodeOptions`, `DecodeOptions`, and `SvgOptions` support value equality for application-owned configuration.
 - EAN/UPC digits and checksums are validated by the backend. Payloads omitting a check digit may have it added by the backend; decoding returns the full canonical value. Codabar includes start/stop letters. Text restrictions and extended Code 39/93 interpretation follow ZXing.
 - Invalid options, UTF-8, layouts, unsupported encoding formats, or capacity overflow throw `std::invalid_argument`. Out-of-range `IsDark` coordinates throw `std::out_of_range`. Allocation and unexpected internal errors retain their exception categories.
-- Raster/scan dimensions are limited to 64 Mi pixels. Decoding also checks span length and signed backend row-offset limits. View bounds follow the SDK's layout validation; an empty drawing area produces no commands.
+- Raster/scan images are limited to 64 Mi pixels. Decoding also checks span length, signed backend row-offset limits and the backend's limit of 65,535 pixels per dimension. View bounds follow the SDK's layout validation. An empty drawing area produces no commands.
 - SVG supports opaque `0xRRGGBB` foreground/background overrides. Color customization does not guarantee contrast or scan quality.
 
 ## Build and test
@@ -131,6 +131,20 @@ ctest --test-dir build-core -C Release --output-on-failure
 ```
 
 Both modes expose `HuxerUI::QRCode`. The UI header requires the view-enabled build; standalone consumers include only `<huxerui/qrcode/codec.h>`. HuxerUI library-graph and project-plan discovery do not compile or configure ZXing. The pinned backend owns the `ZXing`/`ZXing::ZXing` targets; avoid combining another independently configured ZXing copy in the same CMake build. There is no standalone install/export package in this version; consume it through `add_subdirectory` or `huxerui_use_library`.
+
+### Build only the format families you need
+
+All six ZXing format families are enabled by default. Set the upstream CMake options on the consuming project's configure command, or set them before `add_subdirectory` or `huxerui_use_library`. For example, keep only the QR family:
+
+```sh
+cmake -S . -B build-qr-only -DHUXERUI_QRCODE_BUILD_VIEW=OFF \
+  -DZXING_ENABLE_1D=OFF -DZXING_ENABLE_AZTEC=OFF -DZXING_ENABLE_DATAMATRIX=OFF \
+  -DZXING_ENABLE_MAXICODE=OFF -DZXING_ENABLE_PDF417=OFF
+```
+
+The six switches are `ZXING_ENABLE_1D`, `ZXING_ENABLE_AZTEC`, `ZXING_ENABLE_DATAMATRIX`, `ZXING_ENABLE_MAXICODE`, `ZXING_ENABLE_PDF417`, and `ZXING_ENABLE_QRCODE`. QR, Micro QR and rMQR share the last switch. Options select whole families at compile time. `DecodeOptions::formats` narrows scanning at runtime.
+
+`CanEncode` and `CanDecode` report capabilities of the linked build. An unavailable encoding format throws `std::invalid_argument`. Decode filters skip known disabled formats and return no match if none remain. The Demo lists only enabled writers. The built-in writer preserves the existing format and option surface. Additional ZXing formats and libzint writers are outside the public API.
 
 The public API follows the [interface conventions](docs/interface-conventions.md) reviewed from FinalScave's libraries.
 
