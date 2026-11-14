@@ -1,0 +1,115 @@
+name: Mobile preview
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HUXERUI_REVISION: cadb1696cfa7b87d9d2d316b3ecba07b85a46962
+  PREVIEW_ID: org.huxerui.lib.qrcode.preview
+  REFERENCE_RESULT: "Decoded QR Code: HuxerUI external fixture"
+
+jobs:
+  android:
+    name: Android APK (${{ matrix.abi }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HuxerUI/HuxerUI
+          ref: ${{ env.HUXERUI_REVISION }}
+          path: .cache/HuxerUI
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK components
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.14206865' 'cmake;3.22.1'
+      - name: Build HuxerUI CLI
+        run: |
+          cmake -S .cache/HuxerUI/tools/huxerui_cli -B build-huxerui-cli -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-huxerui-cli --parallel 2
+      - name: Package Android preview
+        working-directory: examples/preview
+        env:
+          ORG_GRADLE_PROJECT_huxeruiAbis: ${{ matrix.abi }}
+          ORG_GRADLE_PROJECT_qrcodePreviewMobileSmoke: ${{ matrix.abi == 'x86_64' && 'ON' || 'OFF' }}
+          CMAKE_BUILD_PARALLEL_LEVEL: '4'
+        run: |
+          chmod +x platform/android/gradlew
+          ../../build-huxerui-cli/huxerui package android --profile debug --source ../../.cache/HuxerUI
+      - name: Verify APK contents
+        env:
+          EXPECTED_ABI: ${{ matrix.abi }}
+        run: |
+          apks=(examples/preview/dist/android/*.apk)
+          test "${#apks[@]}" -eq 1
+          test -f "${apks[0]}"
+          unzip -Z1 "${apks[0]}" > "$RUNNER_TEMP/qrcode-apk-entries"
+          grep -Fx "lib/$EXPECTED_ABI/libexample_qrcode.so" "$RUNNER_TEMP/qrcode-apk-entries"
+          grep -Fx "lib/$EXPECTED_ABI/libhuxerui.so" "$RUNNER_TEMP/qrcode-apk-entries"
+          grep -Fx 'assets/huxerui/resources.bin' "$RUNNER_TEMP/qrcode-apk-entries"
+          test "$(awk -F/ '/^lib\/.*\.so$/ {print $2}' "$RUNNER_TEMP/qrcode-apk-entries" | sort -u)" = "$EXPECTED_ABI"
+          echo "QRCODE_APK=${apks[0]}" >> "$GITHUB_ENV"
+      - name: Enable Android emulator acceleration
+        if: matrix.abi == 'x86_64'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch preview and decode the reference image
+        if: matrix.abi == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash .github/scripts/check-android-preview.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qrcode-preview-android-${{ matrix.abi }}
+          path: ${{ env.QRCODE_APK }}
+          if-no-files-found: error
+
+  ios:
+    name: iOS Simulator app
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HuxerUI/HuxerUI
+          ref: ${{ env.HUXERUI_REVISION }}
+          path: .cache/HuxerUI
+      - name: Build HuxerUI CLI
+        run: |
+          cmake -S .cache/HuxerUI/tools/huxerui_cli -B build-huxerui-cli -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-huxerui-cli --parallel 3
+      - name: Build Simulator preview
+        working-directory: examples/preview
+        env:
+          XCODE_XCCONFIG_FILE: ${{ runner.temp }}/qrcode-ci.xcconfig
+        run: |
+          printf '%s\n' 'CODE_SIGNING_ALLOWED = NO' 'QRCODE_PREVIEW_MOBILE_SMOKE = ON' > "$XCODE_XCCONFIG_FILE"
+          ../../build-huxerui-cli/huxerui build ios --profile debug --source ../../.cache/HuxerUI
+      - name: Launch preview and decode the reference image
+        run: bash .github/scripts/check-ios-preview.sh
+      - name: Archive Simulator app
+        run: ditto -c -k --keepParent "$QRCODE_APP" "$RUNNER_TEMP/qrcode-preview-ios-simulator.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qrcode-preview-ios-simulator
+          path: ${{ runner.temp }}/qrcode-preview-ios-simulator.zip
+          if-no-files-found: error

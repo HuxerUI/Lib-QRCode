@@ -6,5 +6,7 @@
 *.user
 *.swp
 /.DS_Store
+/examples/preview/.huxerui/
+/examples/preview/dist/
 # Unused upstream libzint symlinks; only the built-in writer backend is distributed.
 /third_party/zxing/core/src/libzint/
