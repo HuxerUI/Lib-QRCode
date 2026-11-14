@@ -16,7 +16,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 set(_preview_sources src/app.cpp src/application.cpp)
+set(_preview_resource_args)
 if(NOT HUXERUI_LIBRARY_GRAPH_ONLY)
+    if(ANDROID AND HUXERUI_ANDROID_RESOURCE_OUTPUT_ROOT)
+        list(APPEND _preview_resource_args RESOURCE_OUTPUT_DIRECTORY
+            "${HUXERUI_ANDROID_RESOURCE_OUTPUT_ROOT}/${ANDROID_ABI}")
+    endif()
     if(WIN32)
         list(APPEND _preview_sources platform/windows/main.cpp)
     elseif(APPLE AND NOT IOS)
@@ -30,9 +35,16 @@ endif()
 
 huxerui_add_app(example_qrcode
     SOURCES ${_preview_sources}
+    RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    RESOURCE_NAMESPACE qrcode_preview
+    ${_preview_resource_args}
     BUNDLE_NAME "Lib-QRCode Preview"
     BUNDLE_IDENTIFIER "org.huxerui.lib.qrcode.preview")
 huxerui_use_library(example_qrcode TARGET HuxerUI::QRCode)
 if(NOT HUXERUI_LIBRARY_GRAPH_ONLY)
     target_compile_options(example_qrcode PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8;/W4;/permissive->")
+    option(QRCODE_PREVIEW_MOBILE_SMOKE "Check the bundled reference image on first preview composition" OFF)
+    if(QRCODE_PREVIEW_MOBILE_SMOKE)
+        target_compile_definitions(example_qrcode PRIVATE QRCODE_PREVIEW_MOBILE_SMOKE=1)
+    endif()
 endif()

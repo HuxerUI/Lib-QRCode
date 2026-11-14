@@ -24,6 +24,8 @@ int main() { return Run([] {
   CHECK(ui.Find(UiSelector::Key("symbol-preview")).Exists());
   ui.Find(UiSelector::Text("Decode preview")).Tap();
   CHECK(ui.Find(UiSelector::Text("Decoded QR Code: https://github.com/HuxerUI")).Exists());
+  ui.Find(UiSelector::Text("Decode reference image")).Tap();
+  CHECK(ui.Find(UiSelector::Text("Decoded QR Code: HuxerUI external fixture")).Exists());
   ui.Find(UiSelector::Text("Use Unicode sample")).Tap();
   ui.Find(UiSelector::Text("Decode preview")).Tap();
   CHECK(ui.Find(UiSelector::Text("Decoded QR Code: HuxerUI / 二维码 / 日本語 / 😀")).Exists());
@@ -40,4 +42,11 @@ int main() { return Run([] {
   ui.Find(UiSelector::Text("Decode preview")).Tap();
   CHECK(ui.Find(UiSelector::Text("Decoded QR Code: https://github.com/HuxerUI")).Exists());
   ui.PumpAndSettle();
+
+  ui.SetWindowMetrics({.viewport = {390, 844}});
+  ui.PumpAndSettle();
+  const auto reference_button =
+      ui.Find(UiSelector::Key("preview-scroll")).ScrollUntil(UiSelector::Text("Decode reference image"));
+  reference_button.Tap();
+  CHECK(ui.Find(UiSelector::Text("Decoded QR Code: HuxerUI external fixture")).Exists());
 }); }
