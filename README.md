@@ -146,6 +146,8 @@ The six switches are `ZXING_ENABLE_1D`, `ZXING_ENABLE_AZTEC`, `ZXING_ENABLE_DATA
 
 `CanEncode` and `CanDecode` report capabilities of the linked build. An unavailable encoding format throws `std::invalid_argument`. Decode filters skip known disabled formats and return no match if none remain. The Demo lists only enabled writers. The built-in writer preserves the existing format and option surface. Additional ZXing formats and libzint writers are outside the public API.
 
+The codec tests include [independent decode fixtures](tests/fixtures/README.md) for reader-only formats and compact/stacked variants, including format filters, pure mode, disabled families and UPC normalization. Fixtures are checked into the repository; test runs require no external encoder or downloads.
+
 The public API follows the [interface conventions](docs/interface-conventions.md) reviewed from FinalScave's libraries.
 
 ## License

@@ -176,20 +176,40 @@ void CheckQr() {
 }
 
 int main() { return Run([] {
-  const auto capabilities = std::to_array<std::pair<BarcodeFormat, bool>>({
-    {BarcodeFormat::QRCode, QRCODE_TEST_QRCODE}, {BarcodeFormat::Code128, QRCODE_TEST_1D},
-    {BarcodeFormat::Aztec, QRCODE_TEST_AZTEC}, {BarcodeFormat::DataMatrix, QRCODE_TEST_DATAMATRIX},
-    {BarcodeFormat::PDF417, QRCODE_TEST_PDF417}, {BarcodeFormat::MaxiCode, QRCODE_TEST_MAXICODE},
-  });
+  struct Capability { BarcodeFormat format; bool readable; bool writable; };
+  const Capability capabilities[]{
+    {BarcodeFormat::QRCode, QRCODE_TEST_QRCODE, QRCODE_TEST_QRCODE},
+    {BarcodeFormat::Code128, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::Code39, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::Code93, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::EAN8, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::EAN13, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::UPCA, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::UPCE, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::ITF, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::Codabar, QRCODE_TEST_1D, QRCODE_TEST_1D},
+    {BarcodeFormat::Aztec, QRCODE_TEST_AZTEC, QRCODE_TEST_AZTEC},
+    {BarcodeFormat::DataMatrix, QRCODE_TEST_DATAMATRIX, QRCODE_TEST_DATAMATRIX},
+    {BarcodeFormat::PDF417, QRCODE_TEST_PDF417, QRCODE_TEST_PDF417},
+    {BarcodeFormat::MicroQRCode, QRCODE_TEST_QRCODE, false},
+    {BarcodeFormat::RMQRCode, QRCODE_TEST_QRCODE, false},
+    {BarcodeFormat::MaxiCode, QRCODE_TEST_MAXICODE, false},
+    {BarcodeFormat::DataBar, QRCODE_TEST_1D, false},
+    {BarcodeFormat::DataBarExpanded, QRCODE_TEST_1D, false},
+    {BarcodeFormat::DataBarLimited, QRCODE_TEST_1D, false},
+    {BarcodeFormat::DXFilmEdge, QRCODE_TEST_1D, false},
+  };
   const GrayImage white{64, 64, std::vector<std::uint8_t>(64 * 64, 255)};
-  for(const auto [format, enabled] : capabilities) {
-    CHECK(CanDecode(format) == enabled);
-    CHECK(CanEncode(format) == (enabled && format != BarcodeFormat::MaxiCode));
-    if(!enabled) {
+  for(const auto [format, readable, writable] : capabilities) {
+    CHECK(CanDecode(format) == readable);
+    CHECK(CanEncode(format) == writable);
+    if(!writable)
       Throws<std::invalid_argument>([&] { QRCODE_TEST_DISCARD(Encode("123456", {.format = format})); });
+    if(!readable)
       CHECK(!Decode(white.View(), {.formats = {format}}));
-    }
   }
+  CHECK(!CanDecode(static_cast<BarcodeFormat>(-1)));
+  CHECK(!CanDecode(static_cast<BarcodeFormat>(99)));
   if(CanEncode(BarcodeFormat::QRCode)) CheckQr();
   for(auto format : {BarcodeFormat::Code128, BarcodeFormat::Code39, BarcodeFormat::Code93,
                       BarcodeFormat::DataMatrix, BarcodeFormat::Aztec, BarcodeFormat::PDF417})

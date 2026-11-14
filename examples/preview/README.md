@@ -29,7 +29,7 @@ huxerui package android --profile debug --source /path/to/HuxerUI
 huxerui run ios --device <simulator-id> --profile debug --source /path/to/HuxerUI
 ```
 
-Android uses Gradle, JDK 17, SDK 36 and NDK 29.0.14206865. The APK is written to `dist/android/`. iOS uses Xcode with an available iPhone Simulator. List destinations with `huxerui devices ios`. For direct Xcode builds, copy `platform/ios/Config/Local.xcconfig.example` to `Local.xcconfig` and set `HUXERUI_HOME`; the CLI supplies both automatically.
+Android uses Gradle, JDK 17, SDK 36 and NDK 29.0.14206865. The APK is written to `dist/android/`. The CI initializes Android command-line tools before calling `sdkmanager`. iOS requires Xcode 26 or newer for HuxerUI's C++20 `std::stop_token` support; CI selects Xcode 26.3 explicitly instead of the runner's default. See the [Xcode 26 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes). An available iPhone Simulator runtime is also required. List destinations with `huxerui devices ios`. For direct Xcode builds, copy `platform/ios/Config/Local.xcconfig.example` to `Local.xcconfig` and set `HUXERUI_HOME`; the CLI supplies both automatically.
 
 The [mobile workflow](../../.github/workflows/mobile.yml) builds an Android `arm64-v8a` APK for devices and an `x86_64` APK for the emulator. It also builds the iOS Simulator app. Both simulator jobs install the preview, launch it and assert that its bundled image decodes to `HuxerUI external fixture`. The Windows UI test exercises the reference-image button at desktop and phone widths.
 

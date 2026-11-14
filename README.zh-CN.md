@@ -96,6 +96,8 @@ ctest --test-dir build-core -C Release --output-on-failure
 
 核心内置 ZXing-C++ 3.1.1，无需联网下载，保留了 Windows PDF417 的 48 位字节压缩累加器修复。CMake 项目请避免再引入另一个独立配置的 ZXing 副本。当前通过 `add_subdirectory` 或 `huxerui_use_library` 接入，不提供独立安装/导出包。
 
+测试包含由独立编码器生成的[固定解码样本](tests/fixtures/README.md)，覆盖只读格式、紧凑与堆叠变体、格式过滤、pure 模式、禁用格式族及 UPC 规范化。运行测试无需额外编码器或联网下载。iOS 预览构建需要 Xcode 26 或更新版本，以支持 HuxerUI 使用的 C++20 `std::stop_token`；CI 显式选择 Xcode 26.3。
+
 ### 按码制族裁剪编译
 
 默认启用全部码制族。接入方可直接在 CMake 配置时传上游 `ZXING_ENABLE_*` 开关，也可以在引入库前设置。比如只保留 QR 族：

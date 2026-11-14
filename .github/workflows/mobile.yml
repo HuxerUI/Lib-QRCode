@@ -33,6 +33,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v3
       - name: Install Android SDK components
         run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.14206865' 'cmake;3.22.1'
       - name: Build HuxerUI CLI
@@ -88,6 +90,11 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      # Xcode 16's libc++ hides stop_token behind experimental-library flags.
+      # HuxerUI requires the standard C++20 implementation available in Xcode 26.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.3'
       - uses: actions/checkout@v4
         with:
           repository: HuxerUI/HuxerUI
