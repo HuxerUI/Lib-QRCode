@@ -1,0 +1,154 @@
+[package]
+namespace   = "huxerui"
+name        = "qrcode"
+version     = "0.1.0"
+standard    = "c++23"
+license     = "MIT"
+repo        = "https://github.com/HuxerUI/Lib-QRCode"
+description = "QR code and barcode generation, declarative HuxerUI views, and multi-format image decoding"
+
+[package.metadata.huxerui]
+library   = "HuxerUI::QRCode"
+name      = "qrcode"
+id        = "org.huxerui.qrcode"
+namespace = "huxerui::qrcode"
+
+[dependencies]
+huxerui.huxerui = "0.5.5"
+
+[targets.huxerui_qrcode]
+kind = "lib"
+
+[lib]
+path = "modules/qrcode.cppm"
+
+[build]
+sources = [
+    # ZXing 3.1.1 common files (ZXING_READERS=ON, ZXING_WRITERS=OLD, ZXING_C_API=OFF)
+    "third_party/zxing/core/src/Barcode.cpp",
+    "third_party/zxing/core/src/BarcodeFormat.cpp",
+    "third_party/zxing/core/src/BinaryBitmap.cpp",
+    "third_party/zxing/core/src/BitArray.cpp",
+    "third_party/zxing/core/src/BitMatrix.cpp",
+    "third_party/zxing/core/src/BitMatrixIO.cpp",
+    "third_party/zxing/core/src/BitSource.cpp",
+    "third_party/zxing/core/src/CharacterSet.cpp",
+    "third_party/zxing/core/src/ConcentricFinder.cpp",
+    "third_party/zxing/core/src/Content.cpp",
+    "third_party/zxing/core/src/CreateBarcode.cpp",
+    "third_party/zxing/core/src/ECI.cpp",
+    "third_party/zxing/core/src/Error.cpp",
+    "third_party/zxing/core/src/GTIN.cpp",
+    "third_party/zxing/core/src/GlobalHistogramBinarizer.cpp",
+    "third_party/zxing/core/src/GridSampler.cpp",
+    "third_party/zxing/core/src/HRI.cpp",
+    "third_party/zxing/core/src/HybridBinarizer.cpp",
+    "third_party/zxing/core/src/JSON.cpp",
+    "third_party/zxing/core/src/LocalGrid.cpp",
+    "third_party/zxing/core/src/MultiFormatReader.cpp",
+    "third_party/zxing/core/src/MultiFormatWriter.cpp",
+    "third_party/zxing/core/src/PerspectiveTransform.cpp",
+    "third_party/zxing/core/src/ReadBarcode.cpp",
+    "third_party/zxing/core/src/ReedSolomon.cpp",
+    "third_party/zxing/core/src/ResultPoint.cpp",
+    "third_party/zxing/core/src/TextDecoder.cpp",
+    "third_party/zxing/core/src/TextEncoder.cpp",
+    "third_party/zxing/core/src/Utf.cpp",
+    "third_party/zxing/core/src/WhiteRectDetector.cpp",
+    "third_party/zxing/core/src/WriteBarcode.cpp",
+    "third_party/zxing/core/src/ZXingCpp.cpp",
+    # Aztec (reader + old writer)
+    "third_party/zxing/core/src/aztec/AZDecoder.cpp",
+    "third_party/zxing/core/src/aztec/AZDetector.cpp",
+    "third_party/zxing/core/src/aztec/AZEncoder.cpp",
+    "third_party/zxing/core/src/aztec/AZHighLevelEncoder.cpp",
+    "third_party/zxing/core/src/aztec/AZReader.cpp",
+    "third_party/zxing/core/src/aztec/AZToken.cpp",
+    "third_party/zxing/core/src/aztec/AZWriter.cpp",
+    # DataMatrix (reader + old writer)
+    "third_party/zxing/core/src/datamatrix/DMBitLayout.cpp",
+    "third_party/zxing/core/src/datamatrix/DMDataBlock.cpp",
+    "third_party/zxing/core/src/datamatrix/DMDecoder.cpp",
+    "third_party/zxing/core/src/datamatrix/DMDetector.cpp",
+    "third_party/zxing/core/src/datamatrix/DMECEncoder.cpp",
+    "third_party/zxing/core/src/datamatrix/DMHighLevelEncoder.cpp",
+    "third_party/zxing/core/src/datamatrix/DMReader.cpp",
+    "third_party/zxing/core/src/datamatrix/DMSymbolInfo.cpp",
+    "third_party/zxing/core/src/datamatrix/DMVersion.cpp",
+    "third_party/zxing/core/src/datamatrix/DMWriter.cpp",
+    # MaxiCode (reader)
+    "third_party/zxing/core/src/maxicode/MCBitMatrixParser.cpp",
+    "third_party/zxing/core/src/maxicode/MCDecoder.cpp",
+    "third_party/zxing/core/src/maxicode/MCReader.cpp",
+    # 1D (reader + old writer)
+    "third_party/zxing/core/src/oned/ODCodabarReader.cpp",
+    "third_party/zxing/core/src/oned/ODCodabarWriter.cpp",
+    "third_party/zxing/core/src/oned/ODCode128Reader.cpp",
+    "third_party/zxing/core/src/oned/ODCode128Writer.cpp",
+    "third_party/zxing/core/src/oned/ODCode39Reader.cpp",
+    "third_party/zxing/core/src/oned/ODCode39Writer.cpp",
+    "third_party/zxing/core/src/oned/ODCode93Reader.cpp",
+    "third_party/zxing/core/src/oned/ODCode93Writer.cpp",
+    "third_party/zxing/core/src/oned/ODDXFilmEdgeReader.cpp",
+    "third_party/zxing/core/src/oned/ODDataBarCommon.cpp",
+    "third_party/zxing/core/src/oned/ODDataBarExpandedBitDecoder.cpp",
+    "third_party/zxing/core/src/oned/ODDataBarExpandedReader.cpp",
+    "third_party/zxing/core/src/oned/ODDataBarLimitedReader.cpp",
+    "third_party/zxing/core/src/oned/ODDataBarReader.cpp",
+    "third_party/zxing/core/src/oned/ODEAN13Writer.cpp",
+    "third_party/zxing/core/src/oned/ODEAN8Writer.cpp",
+    "third_party/zxing/core/src/oned/ODITFReader.cpp",
+    "third_party/zxing/core/src/oned/ODITFWriter.cpp",
+    "third_party/zxing/core/src/oned/ODMultiUPCEANReader.cpp",
+    "third_party/zxing/core/src/oned/ODReader.cpp",
+    "third_party/zxing/core/src/oned/ODTelepenReader.cpp",
+    "third_party/zxing/core/src/oned/ODUPCAWriter.cpp",
+    "third_party/zxing/core/src/oned/ODUPCEANCommon.cpp",
+    "third_party/zxing/core/src/oned/ODUPCEWriter.cpp",
+    "third_party/zxing/core/src/oned/ODWriterHelper.cpp",
+    # PDF417 (reader + old writer)
+    "third_party/zxing/core/src/pdf417/MicroPDFReader.cpp",
+    "third_party/zxing/core/src/pdf417/PDF417.cpp",
+    "third_party/zxing/core/src/pdf417/PDFBarcodeValue.cpp",
+    "third_party/zxing/core/src/pdf417/PDFBoundingBox.cpp",
+    "third_party/zxing/core/src/pdf417/PDFCodewordDecoder.cpp",
+    "third_party/zxing/core/src/pdf417/PDFDecoder.cpp",
+    "third_party/zxing/core/src/pdf417/PDFDetectionResult.cpp",
+    "third_party/zxing/core/src/pdf417/PDFDetectionResultColumn.cpp",
+    "third_party/zxing/core/src/pdf417/PDFDetector.cpp",
+    "third_party/zxing/core/src/pdf417/PDFEncoder.cpp",
+    "third_party/zxing/core/src/pdf417/PDFHighLevelEncoder.cpp",
+    "third_party/zxing/core/src/pdf417/PDFReader.cpp",
+    "third_party/zxing/core/src/pdf417/PDFScanningDecoder.cpp",
+    "third_party/zxing/core/src/pdf417/PDFWriter.cpp",
+    "third_party/zxing/core/src/pdf417/ZXBigInteger.cpp",
+    # QRCode (reader + old writer)
+    "third_party/zxing/core/src/qrcode/QRBitMatrixParser.cpp",
+    "third_party/zxing/core/src/qrcode/QRCodecMode.cpp",
+    "third_party/zxing/core/src/qrcode/QRDataBlock.cpp",
+    "third_party/zxing/core/src/qrcode/QRDecoder.cpp",
+    "third_party/zxing/core/src/qrcode/QRDetector.cpp",
+    "third_party/zxing/core/src/qrcode/QREncoder.cpp",
+    "third_party/zxing/core/src/qrcode/QRErrorCorrectionLevel.cpp",
+    "third_party/zxing/core/src/qrcode/QRFormatInformation.cpp",
+    "third_party/zxing/core/src/qrcode/QRMaskUtil.cpp",
+    "third_party/zxing/core/src/qrcode/QRMatrixUtil.cpp",
+    "third_party/zxing/core/src/qrcode/QRReader.cpp",
+    "third_party/zxing/core/src/qrcode/QRVersion.cpp",
+    "third_party/zxing/core/src/qrcode/QRWriter.cpp",
+    # Bundled libzueci (both TO_UTF and TO_ECI enabled)
+    "third_party/zxing/core/src/libzueci/zueci.c",
+]
+c_standard           = "c99"
+include_dirs         = ["include", "third_party/zxing/core/src"]
+private_include_dirs = ["third_party/zxing/core/src"]
+defines              = ["ZXING_INTERNAL"]
+cxxflags             = ["-Wno-missing-braces"]
+
+[target.windows.build]
+defines = [
+    "NOMINMAX",
+    "_CRT_SECURE_NO_WARNINGS",
+    "_CRT_NONSTDC_NO_WARNINGS",
+    "_SCL_SECURE_NO_WARNINGS",
+]
